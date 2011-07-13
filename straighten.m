@@ -1,0 +1,9 @@
+function img_ = straighten(x1,x2,img,X,Y)
+%x1 = from
+%x2 = to (coordinates) (usually from meshgrid)
+xy = [X(:)'; Y(:)'; ones(1,numel(X))];
+H = makeH(x2,x1);
+xy = wnorm(H*xy);
+[orgx orgy] = meshgrid(1:size(img,2),1:size(img,1));
+img_ = zeros(size(X));
+img_(:) = interp2(orgx,orgy,double(img(:,:,1)),xy(1,:),xy(2,:));
