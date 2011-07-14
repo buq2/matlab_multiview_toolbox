@@ -24,6 +24,13 @@ if isa(img,'uint8')
 end
 
 for ii = 1:size(X,2)
+    xp = x(1,ii);
+    yp = x(2,ii);
+    if xp < 1 || xp > size(img,2) || yp < 1 || yp > size(img,1)
+        %Outside of the image (but why?), maybe calibrated (please don't
+        %use calibrated pixels)
+        error('Did you use calibrated points? -> image and points do not match')
+    end
     c = img(x(2,ii),x(1,ii),:);
     c = c(:)';
     c(isnan(c)) = 0;
