@@ -4,17 +4,19 @@ function [infos features matches scores imgIdx] = calculateSIFTs(imgs,vl_shift_v
 %Inputs:
 %      imgs                 - Cell array of images from which all SIFT and mathces
 %                             will be calculated.
+%                             Or cell array of filenames.
 %      vl_shift_varargin    - (opt) Function arguments for function 'vl_sift'
 %      vl_ubcmatch_varargin - (opt) Function arguments for function 'vl_ubcmatch'
 %Outputs:
 %      infos     - First outputs of 'vl_sift'
 %      features  - Second outputs of 'vl_sift'
-%      matches   - First outputs of 'vl_ubcmatch'
+%      matches   - First outputs of 'vl_ubcmatch'. Only calculated if
+%                    nargout > 2
 %      scores    - second outputs of 'vl_ubcmatch'
 %      imgIdx    - Index number of images used for matches and scores,
 %                    2xnumel(matches) matrix.
 %
-%Matti Jukola 2011.02.23
+%Matti Jukola 2011.02.23, 2011.07.14
 
 if nargin < 2
     vl_shift_varargin = {};
@@ -31,7 +33,13 @@ imgIdx = zeros(2,ceil((numel(imgs)-1)^2/2+numel(imgs)/2));
 
 h = waitbar(0,'Calculating features');
 for ii = 1:numel(imgs)
-    [infos{ii} features{ii}] = vl_sift(single(rgb2gray(imgs{ii})),vl_shift_varargin{:});
+    if ischar(imgs{ii}) && exist(imgs{ii},'file')
+        img = imread(imgs{ii});
+        [infos{ii} features{ii}] = vl_sift(single(rgb2gray(img)),vl_shift_varargin{:});
+        clear img
+    else
+        [infos{ii} features{ii}] = vl_sift(single(rgb2gray(imgs{ii})),vl_shift_varargin{:});
+    end
     waitbar(ii/numel(imgs),h)
 end
 
@@ -46,9 +54,9 @@ if nargout > 2
             waitbar(num/numel(scores),h);
         end
     end
+    imgIdx(:,num:end) = [];
+    scores(num:end) = [];
+    matches(num:end) = [];
 end
 delete(h)
 
-imgIdx(:,num:end) = [];
-scores(num:end) = [];
-matches(num:end) = [];
