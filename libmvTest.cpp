@@ -65,5 +65,18 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     //
 
     std::vector<libmv::Corner> corners = libmv::Detect(data1, width,
-                                                     height, width);    
+                                                     height, width);
+
+    //Reserve space for output
+    mwSize dims_out1[2] = {3,corners.size()}; //Homogenous
+    plhs[0] = mxCreateNumericArray(2, dims_out1, mxDOUBLE_CLASS, mxREAL);
+
+    unsigned int idx = 0;
+    double *dataOut1 = (double*)mxGetData(plhs[0]);
+    for (unsigned int ii = 0; ii < corners.size(); ++ii) {
+        dataOut1[idx*3 + 0] = (double)corners.at(ii).x;
+        dataOut1[idx*3 + 1] = (double)corners.at(ii).y;
+        dataOut1[idx*3 + 2] = 1.0f;
+        idx += 1;
+    }   
 }
