@@ -1,7 +1,10 @@
 #include "mex.h"
 
-#include "libmv/simple_pipeline/detect.h"
-#include "libmv/simple_pipeline/pipeline.h"
+#include "libmv/detector/detector.h"
+#include "libmv/detector/detector_factory.h"
+#include "libmv/image/image.h"
+#include "libmv/correspondence/feature.h"
+#include "libmv/base/vector.h"
 
 #include <cstring>
 
@@ -59,24 +62,71 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     int mWidth = dimsImg1[1];
     int height = mWidth;
     int width = mHeight;
+    int channels = 1; //Normally 2D image
+    if (numDims > 2) {
+        channels = dimsImg1[2];
+    }
 
+    //
+    // Create libmv image
+    //
+
+    //Construct libmv image
+    libmv::Image img1(new libmv::ByteImage(width,height,channels));
+
+    //Copy MATLAB data
+    memcpy(img1.AsArray3Du()->Data(), data1, width*height);
+    
     //
     // Call libmv function
     //
 
-    std::vector<libmv::Corner> corners = libmv::Detect(data1, width,
-                                                     height, width);
+    //Construct detector object
+    libmv::detector::Detector *det = libmv::detector::detectorFactory(libmv::detector::STAR_DETECTOR); //SURF_DETECTOR, FAST_LIMITED_DETECTOR, STAR_DETECTOR
 
+    if (det == NULL) {
+        mexErrMsgTxt("detector factory returned NULL: Unknown detector type");
+    }
+
+    //Create array for features
+    libmv::vector<libmv::Feature *> features;
+
+    //Pointer for additional data
+    libmv::detector::DetectorData *detData = NULL;
+
+    //Call detector function
+    det->Detect(img1,&features,&detData);
+
+    //
+    //Convert output to point feature
+    //
+    libmv::vector<libmv::PointFeature *> pointFeatures;
+    for (int ii = 0; ii < features.size(); ++ii) {
+        libmv::PointFeature *feat = static_cast<libmv::PointFeature*>(features[ii]);
+        pointFeatures.push_back(feat);
+        features[ii] = NULL;
+    }
+    
+    //
+    // Copy features to MATLAB
+    //
     //Reserve space for output
-    mwSize dims_out1[2] = {3,corners.size()}; //Homogenous
+    mwSize dims_out1[2] = {3,pointFeatures.size()}; //Homogenous
     plhs[0] = mxCreateNumericArray(2, dims_out1, mxDOUBLE_CLASS, mxREAL);
 
-    unsigned int idx = 0;
     double *dataOut1 = (double*)mxGetData(plhs[0]);
-    for (unsigned int ii = 0; ii < corners.size(); ++ii) {
-        dataOut1[idx*3 + 0] = (double)corners.at(ii).x;
-        dataOut1[idx*3 + 1] = (double)corners.at(ii).y;
-        dataOut1[idx*3 + 2] = 1.0f;
-        idx += 1;
+    for (unsigned int ii = 0; ii < pointFeatures.size(); ++ii) {
+        dataOut1[ii*3 + 0] = (double)pointFeatures[ii]->y(); //MATLAB coordinates
+        dataOut1[ii*3 + 1] = (double)pointFeatures[ii]->x();
+        dataOut1[ii*3 + 2] = 1.0f;
     }   
+
+    //
+    // Free libmv data
+    //
+    for (int ii = 0; ii < pointFeatures.size(); ++ii) {
+        delete pointFeatures[ii];
+        pointFeatures[ii] = NULL;
+    }
+    delete detData;
 }
