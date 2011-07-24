@@ -23,7 +23,7 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     //
     // Some MATLAB error checking
     //
-    
+
     if (nrhs != 1) {
         //Not enough inputs
         usage();
@@ -72,11 +72,11 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     //
 
     //Construct libmv image
-    libmv::Image img1(new libmv::ByteImage(width,height,channels));
+    libmv::Image img1(new libmv::ByteImage(height,width,channels));
 
     //Copy MATLAB data
     memcpy(img1.AsArray3Du()->Data(), data1, width*height);
-    
+
     //
     // Call libmv function
     //
@@ -106,7 +106,7 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
         pointFeatures.push_back(feat);
         features[ii] = NULL;
     }
-    
+
     //
     // Copy features to MATLAB
     //
@@ -119,7 +119,7 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
         dataOut1[ii*3 + 0] = (double)pointFeatures[ii]->y(); //MATLAB coordinates
         dataOut1[ii*3 + 1] = (double)pointFeatures[ii]->x();
         dataOut1[ii*3 + 2] = 1.0f;
-    }   
+    }
 
     //
     // Free libmv data

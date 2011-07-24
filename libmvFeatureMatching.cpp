@@ -6,14 +6,22 @@
 //#include "libmv/correspondence/feature_set.h"
 #include "libmv/base/vector.h"
 #include "libmv/logging/logging.h"
-
-
 #include <cstring>
 
 void usage()
 {
     mexPrintf(
-    "libmv test"
+              "Libmv test. Use code below to test\n\n"
+    "\tp1 = rand(3,100);\n"
+    "\tp1(3,:) = 1;\n"
+    "\tp2 = rand(3,100);\n"
+    "\tp2(3,:) = 1;\n"
+    "\t[pp1 pp2] = libmvFeatureMatching(p1,p2);\n"
+    "\tplot([pp1(1,:);pp2(1,:)],[pp1(2,:);pp2(2,:)])\n"
+    "\thold on\n"
+    "\tplot(p1(1,:),p1(2,:),'b.')\n"
+    "\tplot(p2(1,:),p2(2,:),'r.')\n"
+    "\thold off\n"
     );
 }
 
@@ -57,8 +65,8 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     // Get data
     //
 
-    unsigned char *data1 = (unsigned char*)mxGetData(prhs[0]);
-    unsigned char *data2 = (unsigned char*)mxGetData(prhs[1]);
+    double *data1 = (double*)mxGetData(prhs[0]);
+    double *data2 = (double*)mxGetData(prhs[1]);
     int mRow = dimsData1[0]; //In MATLAB indexing
 
     int mCol1 = dimsData1[1]; //Number of points in set 1

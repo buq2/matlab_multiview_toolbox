@@ -66,7 +66,7 @@ else
     img = frame.frames.cdata;
 end
 
-[points success realPoints] = findChessboardCornersCV(img,boardSize,0);
+[points success realPoints] = CVfindChessboardCorners(img,boardSize,0);
 if success
     hold on
     plotp(points)
