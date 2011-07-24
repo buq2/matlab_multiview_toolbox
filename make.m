@@ -12,5 +12,5 @@ clear functions
 %
 
 %mex CC=g++ CXX=g++ LD=g++ -cxx libmvDetector.cpp -I/home/buq2/src/libmv/src -I/home/buq2/src/libmv/src/third_party/eigen -L/home/buq2/src/libmv/lib -ldetector
-mex CC=g++ CXX=g++ LD=g++ -cxx libmvFeatureMatching.cpp -I/home/buq2/src/libmv/src -I/home/buq2/src/libmv/src/third_party/glog/src -I/home/buq2/src/libmv/src/third_party/eigen -L/home/buq2/src/libmv/lib -lcorrespondence -lflann
+mex CC=g++ CXX=g++ LD=g++ -cxx libmvFeatureMatchingFLANN.cpp -I/home/buq2/src/libmv/src -I/home/buq2/src/libmv/src/third_party/glog/src -I/home/buq2/src/libmv/src/third_party/eigen -L/home/buq2/src/libmv/lib -lcorrespondence -lflann
 %mex CC=g++ CXX=g++ LD=g++ -cxx libmvDescriptor.cpp -I/home/buq2/src/libmv/src -I/home/buq2/src/libmv/src/third_party/eigen -L/home/buq2/src/libmv/lib -ldescriptor -lcorrespondence

@@ -126,7 +126,7 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     //
 
     //Construct detector object
-    libmv::descriptor::Describer *desc = libmv::descriptor::describerFactory(libmv::descriptor::DAISY_DESCRIBER); //
+    libmv::descriptor::Describer *desc = libmv::descriptor::describerFactory(libmv::descriptor::DAISY_DESCRIBER); //SURF_DESCRIBER, DAISY_DESCRIBER, SIMPLEST_DESCRIBER, DIPOLE_DESCRIBER
 
     if (desc == NULL) {
         mexErrMsgTxt("descriptor factory returned NULL: Unknown descriptor type");
