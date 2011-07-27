@@ -58,7 +58,7 @@ hold off
 %% Test detector, descriptor and FLANN
 fname = '/media/raid/DATA/data_raw/tracking_video/MVI_0654.MOV';
 ii = 1;
-jj = 2;
+jj = 12;
 data = mmread(fname,ii);
 img1 = data.frames.cdata;
 data = mmread(fname,jj);

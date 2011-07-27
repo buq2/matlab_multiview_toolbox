@@ -71,6 +71,7 @@ else
     
     %Interpolate
     d2(:) = interp1q(linspace(min_max(1),min_max(2),numel(d2_))',d2_(:),d2(:));
+    %d2(:) = interp1(linspace(min_max(1),min_max(2),numel(d2_))',d2_(:),d2(:),'cubic');
 end
 
 d2 = d2.^2;
