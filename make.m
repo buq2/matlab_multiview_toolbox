@@ -16,3 +16,7 @@ clear functions
 %mex CC=g++ CXX=g++ LD=g++ -cxx libmvDescriptor.cpp -I/home/buq2/src/libmv/src -I/home/buq2/src/libmv/src/third_party/eigen -L/home/buq2/src/libmv/lib -ldescriptor -lcorrespondence
 
 mex CC=g++ CXX=g++ LD=g++ -cxx libmvSimplePipeline.cpp -I/home/buq2/src/libmv/src -I/home/buq2/src/libmv/src/third_party/glog/src -I/home/buq2/src/libmv/src/third_party/eigen -L/home/buq2/src/libmv/lib -lcorrespondence -lflann
+
+%% Kinect stuff
+
+mex kinectGrab.cpp -I/usr/include/libfreenect -lfreenect -lboost_thread -lpthread
