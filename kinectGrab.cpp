@@ -201,7 +201,23 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     //if(freenect_shutdown < 0) {
     //    mexErrMsgTxt("Freenect shutdown failed");
     //}
+
+    //Permute outputs (otherwise images seem to be trasposed)
+    mwSize permute1_vec_size[1] = {3};
+    mxArray *permute1_in_params[2] = {out_depth,mxCreateNumericArray(1, permute1_vec_size, mxDOUBLE_CLASS, mxREAL)};
+    double *data_permute1_vec = (double*)mxGetData(permute1_in_params[1]);
+    data_permute1_vec[0] = 2;
+    data_permute1_vec[1] = 1;
+    data_permute1_vec[2] = 3;
+    mexCallMATLAB(1, &plhs[0], 2, permute1_in_params, "permute");
+
+    mwSize permute2_vec_size[1] = {4};
+    mxArray *permute2_in_params[2] = {out_rgb,mxCreateNumericArray(1, permute2_vec_size, mxDOUBLE_CLASS, mxREAL)};
+    double *data_permute2_vec = (double*)mxGetData(permute2_in_params[1]);
+    data_permute2_vec[0] = 2;
+    data_permute2_vec[1] = 1;
+    data_permute2_vec[2] = 3;
+    data_permute2_vec[3] = 4;
+    mexCallMATLAB(1, &plhs[1], 2, permute2_in_params, "permute");
     
 }
-
-
