@@ -16,15 +16,16 @@ void usage()
     "Outputs:\n"
     "        depth - Depth data\n"
     "        rgb   - RGB data\n"
+    "        accel - Raw accelaration data for each frame\n"
     );
 }
 
-std::vector<uint16_t> m_gamma(2048);
 int got_frames_rgb = 0;
 int got_frames_depth = 0;
 int max_frames_ = 10;
 double *data_depth = NULL;
 uint8_t *data_rgb = NULL;
+double *data_accel = NULL;
 
 const int width = 640;
 const int height = 480;
@@ -59,8 +60,7 @@ void DepthCallback(freenect_device *dev, void* _depth, uint32_t timestamp) {
     size_t numElem = width*height;
     
     for(size_t ii = 0 ; ii < numElem ; ++ii) {
-        double pval = m_gamma[depth[ii]];
-        data_depth[numElem*got_frames_depth + ii] = pval;
+        data_depth[numElem*got_frames_depth + ii] = depth[ii];
     }
     
     ++got_frames_depth;
@@ -94,24 +94,26 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
 
     max_frames_ = *((double*)mxGetData(prhs[0]));
 
-    if (nlhs != 2) {
+    if (nlhs != 3) {
         usage();
-        mexPrintf("There must be two outputs\n");
+        mexPrintf("There must be three outputs\n");
     }
 
     //Create output arrays
-    
-
     mwSize dims_out_depth[3] = {width,height,max_frames_};
     mwSize dims_out_rgb[4] = {width,height,3,max_frames_};
+    mwSize dims_out_accel[2] = {3,max_frames_};
     mxArray *out_rgb = mxCreateNumericArray(4, dims_out_rgb, mxUINT8_CLASS, mxREAL);
     mxArray *out_depth = mxCreateNumericArray(3, dims_out_depth, mxDOUBLE_CLASS, mxREAL);
+    mxArray *out_accel = mxCreateNumericArray(2, dims_out_accel, mxDOUBLE_CLASS, mxREAL);
     plhs[0] = out_depth;
     plhs[1] = out_rgb;
+    plhs[2] = out_accel;
 
     data_rgb = (uint8_t*)mxGetData(out_rgb);
     data_depth = (double*)mxGetData(out_depth);
-
+    data_accel = (double*)mxGetData(out_accel);
+    
     //Initialize freenect library
     //freenect_context *m_ctx;
     //if (freenect_init(&m_ctx, NULL) < 0) {
@@ -121,12 +123,6 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     freenect_video_format requested_format_rgb(FREENECT_VIDEO_RGB);
     freenect_depth_format requested_format_depth(FREENECT_DEPTH_11BIT);
 
-    //Initialize depth
-    for( unsigned int i = 0 ; i < 2048 ; i++) {
-        float v = i/2048.0;
-        v = std::pow(v, 3)* 6;
-        m_gamma[i] = v*6*256;
-    }
 
     /*
     // We claim both the motor and camera devices, since this class exposes both.
@@ -158,8 +154,9 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
         mexErrMsgTxt("Cannot start depth callback");
     }
     */
-    
-    while (capturedFrames() < max_frames_) {
+
+    int currentFrame = 0;
+    while ((currentFrame = capturedFrames()) < max_frames_) {
         //mexPrintf("Waiting...\n");
 
         void *videobuf = NULL;
@@ -169,6 +166,15 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
             mexPrintf("Synchronous RGB capture failed");
         } else {
             VideoCallback(NULL, videobuf, timestamp);
+        }
+
+        freenect_raw_tilt_state *tiltstateptr;
+        if (freenect_sync_get_tilt_state(&tiltstateptr, 0)) {
+            mexPrintf("Failed to get acceleration");
+        } else {
+            data_accel[3*currentFrame + 0] = ((double)tiltstateptr->accelerometer_x)/(double)FREENECT_COUNTS_PER_G;
+            data_accel[3*currentFrame + 1] = ((double)tiltstateptr->accelerometer_y)/(double)FREENECT_COUNTS_PER_G;
+            data_accel[3*currentFrame + 2] = ((double)tiltstateptr->accelerometer_z)/(double)FREENECT_COUNTS_PER_G;
         }
         
 
@@ -198,9 +204,9 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     }
     */
     
-    //if(freenect_shutdown < 0) {
-    //    mexErrMsgTxt("Freenect shutdown failed");
-    //}
+    if(freenect_shutdown < 0) {
+        mexErrMsgTxt("Freenect shutdown failed");
+    }
 
     //Permute outputs (otherwise images seem to be trasposed)
     mwSize permute1_vec_size[1] = {3};
