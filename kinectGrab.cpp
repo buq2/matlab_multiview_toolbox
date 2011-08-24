@@ -1,5 +1,6 @@
 #include "mex.h"
 #include "libfreenect.h"
+#include <libfreenect_sync.h>
 #include <vector>
 //#include <boost/thread/mutex.hpp>
 #include <cmath>
@@ -18,21 +19,16 @@ void usage()
     );
 }
 
-std::vector<uint8_t> m_buffer_depth;
-std::vector<uint8_t> m_buffer_video;
 std::vector<uint16_t> m_gamma(2048);
-//boost::mutex mutex_frames;
 int got_frames_rgb = 0;
 int got_frames_depth = 0;
 int max_frames_ = 10;
 double *data_depth = NULL;
-double *data_rgb = NULL;
+uint8_t *data_rgb = NULL;
 
 const int width = 640;
 const int height = 480;
 const int channels = 3;
-
-
 
 
 // Do not call directly even in child
@@ -108,27 +104,22 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
 
     mwSize dims_out_depth[3] = {width,height,max_frames_};
     mwSize dims_out_rgb[4] = {width,height,3,max_frames_};
-    mxArray *out_rgb = mxCreateNumericArray(4, dims_out_rgb, mxDOUBLE_CLASS, mxREAL);
+    mxArray *out_rgb = mxCreateNumericArray(4, dims_out_rgb, mxUINT8_CLASS, mxREAL);
     mxArray *out_depth = mxCreateNumericArray(3, dims_out_depth, mxDOUBLE_CLASS, mxREAL);
     plhs[0] = out_depth;
     plhs[1] = out_rgb;
 
-    data_rgb = (double*)mxGetData(out_rgb);
+    data_rgb = (uint8_t*)mxGetData(out_rgb);
     data_depth = (double*)mxGetData(out_depth);
 
     //Initialize freenect library
-    freenect_context *m_ctx;
-    if (freenect_init(&m_ctx, NULL) < 0) {
-        mexErrMsgTxt("Cannot initialize freenect library");
-    }
+    //freenect_context *m_ctx;
+    //if (freenect_init(&m_ctx, NULL) < 0) {
+    //    mexErrMsgTxt("Cannot initialize freenect library");
+    //}
 
-    // We claim both the motor and camera devices, since this class exposes both.
-    // It does not support audio, so we do not claim it.
-    freenect_select_subdevices(m_ctx, static_cast<freenect_device_flags>(FREENECT_DEVICE_MOTOR | FREENECT_DEVICE_CAMERA));
-
-    //Initialize buffers
-    m_buffer_depth = std::vector<uint8_t>(freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_VIDEO_RGB).bytes);
-    m_buffer_video = std::vector<uint8_t>(freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_11BIT).bytes);
+    freenect_video_format requested_format_rgb(FREENECT_VIDEO_RGB);
+    freenect_depth_format requested_format_depth(FREENECT_DEPTH_11BIT);
 
     //Initialize depth
     for( unsigned int i = 0 ; i < 2048 ; i++) {
@@ -137,19 +128,27 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
         m_gamma[i] = v*6*256;
     }
 
+    /*
+    // We claim both the motor and camera devices, since this class exposes both.
+    // It does not support audio, so we do not claim it.
+    freenect_select_subdevices(m_ctx, static_cast<freenect_device_flags>(FREENECT_DEVICE_MOTOR | FREENECT_DEVICE_CAMERA));
+
     //Try to open device
     freenect_device *m_dev;
-
+    
     if(freenect_open_device(m_ctx, &m_dev, 0) < 0) { //Open device 0
         mexErrMsgTxt("Cannot open Kinect");
     }
+
     
-    freenect_set_video_mode(m_dev, freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_VIDEO_RGB));
-    freenect_set_depth_mode(m_dev, freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_11BIT));
+    
+    
+    freenect_set_video_mode(m_dev, freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, requested_format_rgb));
+    freenect_set_depth_mode(m_dev, freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, requested_format_depth));
     freenect_set_depth_callback(m_dev, DepthCallback);
     freenect_set_video_callback(m_dev, VideoCallback);
 
-    freenect_video_format requested_format(FREENECT_VIDEO_RGB);
+    
     
     if(freenect_start_video(m_dev) < 0) {
         mexErrMsgTxt("Cannot start RGB callback");
@@ -158,15 +157,34 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     if(freenect_start_depth(m_dev) < 0) {
         mexErrMsgTxt("Cannot start depth callback");
     }
-
+    */
     
     while (capturedFrames() < max_frames_) {
         //mexPrintf("Waiting...\n");
-        if(freenect_process_events(m_ctx) < 0) {
-            mexPrintf("Cannot process freenect events");
+
+        void *videobuf = NULL;
+        void *depthbuf = NULL;
+        uint32_t timestamp;
+        if (freenect_sync_get_video(&videobuf, &timestamp, 0, requested_format_rgb)) {
+            mexPrintf("Synchronous RGB capture failed");
+        } else {
+            VideoCallback(NULL, videobuf, timestamp);
         }
+        
+
+        if (freenect_sync_get_depth(&depthbuf, &timestamp, 0, requested_format_depth)) {
+            mexPrintf("Synchronous depth capture failed");
+        } else {
+            DepthCallback(NULL, depthbuf, timestamp);
+        }
+        
+        //if(freenect_process_events(m_ctx) < 0) {
+        //    mexPrintf("Cannot process freenect events");
+        //}
     }
 
+    freenect_sync_stop();
+    /*
     if(freenect_stop_video(m_dev) < 0) {
         mexErrMsgTxt("Cannot stop RGB callback");
     }
@@ -178,10 +196,12 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     if(freenect_close_device(m_dev) < 0) {
         mexErrMsgTxt("Kinect closing failed");
     }
-
-    if(freenect_shutdown < 0) {
-        mexErrMsgTxt("Freenect shutdown failed");
-    }
+    */
+    
+    //if(freenect_shutdown < 0) {
+    //    mexErrMsgTxt("Freenect shutdown failed");
+    //}
+    
 }
 
 
