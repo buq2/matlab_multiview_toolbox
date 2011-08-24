@@ -19,4 +19,4 @@ mex CC=g++ CXX=g++ LD=g++ -cxx libmvSimplePipeline.cpp -I/home/buq2/src/libmv/sr
 
 %% Kinect stuff
 
-mex kinectGrab.cpp -I/usr/include/libfreenect -lfreenect -lboost_thread -lpthread
+mex kinectGrab.cpp -I/usr/include/libfreenect -lfreenect -lboost_thread
