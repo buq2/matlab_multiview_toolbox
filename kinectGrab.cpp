@@ -1,7 +1,8 @@
 #include "mex.h"
 #include "libfreenect.hpp"
 #include <vector>
-#include <boost/thread/mutex.hpp>
+//#include <boost/thread/mutex.hpp>
+#include <cmath>
 
 void usage()
 {
@@ -48,7 +49,7 @@ public:
         //mexPrintf("New frame RGB\n");
         uint8_t* rgb = static_cast<uint8_t*>(_rgb);
         std::copy(rgb, rgb+getVideoBufferSize(), m_buffer_video.begin());
-        boost::mutex::scoped_lock lock(mutex_frames);
+        //boost::mutex::scoped_lock lock(mutex_frames);
         ++got_frames_rgb;
         if (got_frames_rgb >= max_frames_) {
             stopVideo();
@@ -99,7 +100,7 @@ public:
                 break;
             }
         }
-        boost::mutex::scoped_lock lock(mutex_frames);
+        //boost::mutex::scoped_lock lock(mutex_frames);
         ++got_frames_depth;
         if (got_frames_depth >= max_frames_) {
             stopDepth();
@@ -107,7 +108,7 @@ public:
     }
 
     int capturedFrames() {
-        boost::mutex::scoped_lock lock(mutex_frames);
+        //boost::mutex::scoped_lock lock(mutex_frames);
         return std::min(got_frames_rgb,got_frames_depth);
     }
 
@@ -115,7 +116,7 @@ private:
     std::vector<uint8_t> m_buffer_depth;
     std::vector<uint8_t> m_buffer_video;
     std::vector<uint16_t> m_gamma;
-    boost::mutex mutex_frames;
+    //boost::mutex mutex_frames;
     int got_frames_rgb;
     int got_frames_depth;
     int max_frames_;
@@ -181,7 +182,7 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     device->startDepth();
 
     while (device->capturedFrames() < 10) {
-        
+        mexPrintf("Waiting...\n");
     }
 
     device->stopVideo();
