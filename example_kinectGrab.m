@@ -10,9 +10,8 @@ R = reshape([9.9994855279432382e-01, -9.2814542247140770e-03, 4.0922331326492334
 T = [2.4158781090188233e-02, -2.5259041391054410e-03,2.5188423349242228e-03]';
 depth_base_and_offset = [7.84662664e-02, 1.07061072e+03];
 %% Get raw data
-numFrames = 100;
+numFrames = 50;
 [depth rgb accel] = kinectGrab(numFrames);
-accel
 %%
 accelVec = bsxfun(@rdivide,accel,sqrt(sum(accel.^2)));
 accelVec(2,:) = -accelVec(2,:);
@@ -121,7 +120,7 @@ for ii = 1:5:numFrames
     drawnow
 end
 %% Remove distortions
-ii = 32;
+ii = 41;
 img1 = rgb(:,:,:,ii);
 img2 = depth(:,:,ii);
 

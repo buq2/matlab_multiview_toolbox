@@ -21,15 +21,15 @@ void usage()
 }
 
 //Kinect device (physical device)
-freenect_device *m_dev = NULL;
+freenect_device *kinectDevice = NULL;
 //Freenect library context
-freenect_context *m_ctx = NULL;
+freenect_context *freenectContext = NULL;
 //Number of rgb frames captured
-int got_frames_rgb = 0;
+int framesCapturedRgb = 0;
 //Number of depth frames captured
-int got_frames_depth = 0;
+int framesCapturedDepth = 0;
 //Number of frames to be captured
-int max_frames_ = 0;
+int framesToBeCaptured = 0;
 //Pointers to MATLAB output data
 double *data_depth = NULL;
 uint8_t *data_rgb = NULL;
@@ -45,9 +45,9 @@ bool validDepthReceived = false;
 bool validRgbReceived = false;
 
 //Simple check to make sure that depth buffer contains actual data
-bool isValidDepthBuffer(void* _depth)
+bool isValidDepthBuffer(void* depthBuf)
 {
-    uint16_t* depth = static_cast<uint16_t*>(_depth);
+    uint16_t* depth = static_cast<uint16_t*>(depthBuf);
     size_t numElem = width*height;
     for(size_t ii = 0 ; ii < numElem ; ++ii) {
         if (depth[ii] != 0) {
@@ -58,9 +58,9 @@ bool isValidDepthBuffer(void* _depth)
 }
 
 //Simple check to make sure that rgb buffer contains actual data
-bool isValidRgbBuffer(void* _rgb)
+bool isValidRgbBuffer(void* rgbBuf)
 {
-    uint8_t* rgb = static_cast<uint8_t*>(_rgb);
+    uint8_t* rgb = static_cast<uint8_t*>(rgbBuf);
     size_t layer = width*height;
     size_t numElems = layer*3;
     for(size_t ii = 0 ; ii < numElems ; ++ii) {
@@ -72,11 +72,11 @@ bool isValidRgbBuffer(void* _rgb)
 }
 
 // Do not call directly even in child
-void VideoCallback(freenect_device *m_dev, void* _rgb, uint32_t timestamp)
+void VideoCallback(freenect_device *kinectDeviceCaller, void* rgbBuf, uint32_t timestamp)
 {
     //Have we already received valid rgb data?
     if (!validRgbReceived) {
-        validRgbReceived = isValidRgbBuffer(_rgb);
+        validRgbReceived = isValidRgbBuffer(rgbBuf);
         if (!validRgbReceived) {
             return; //Rgb data not yet valid. Wait for next buffer
         }
@@ -88,28 +88,28 @@ void VideoCallback(freenect_device *m_dev, void* _rgb, uint32_t timestamp)
     }
 
     //Do not try to capture more frames than needed
-    if (got_frames_rgb >= max_frames_) {
+    if (framesCapturedRgb >= framesToBeCaptured) {
         return;
     }
-    uint8_t* rgb = static_cast<uint8_t*>(_rgb);
+    uint8_t* rgb = static_cast<uint8_t*>(rgbBuf);
 
-    //size_t numBytes = freenect_get_current_depth_mode(m_dev).bytes;
+    //size_t numBytes = freenect_get_current_depth_mode(device).bytes;
     //size_t numElems = numBytes;
     size_t layer = width*height;
     size_t numElems = layer*3;
     for (size_t ii = 0; ii < numElems; ++ii) {
-        data_rgb[numElems*got_frames_rgb + ii/3 + ii%3*layer] = rgb[ii];
+        data_rgb[numElems*framesCapturedRgb + ii/3 + ii%3*layer] = rgb[ii];
     }
     
-    ++got_frames_rgb;
+    ++framesCapturedRgb;
 };
     
 // Do not call directly even in child
-void DepthCallback(freenect_device *dev, void* _depth, uint32_t timestamp)
+void DepthCallback(freenect_device *kinectDeviceCaller, void* depthBuf, uint32_t timestamp)
 {
     //Have we already received valid rgb data?
     if (!validDepthReceived) {
-        validDepthReceived = isValidDepthBuffer(_depth);
+        validDepthReceived = isValidDepthBuffer(depthBuf);
         return; //RGB must be captured first
         //if (!validDepthReceived) {
         //    return; //Rgb data not yet valid. Wait for next buffer
@@ -117,35 +117,35 @@ void DepthCallback(freenect_device *dev, void* _depth, uint32_t timestamp)
     }
 
     //We also must wait for valid depth
-    if (!validRgbReceived) {
+    if (framesCapturedRgb==0) {
         return; //Wait till depth is ready
     }
 
     //Do not try to capture more frames than needed
-    if (got_frames_depth >= max_frames_) {
+    if (framesCapturedDepth >= framesToBeCaptured) {
         return;
     }
 
     //Get the acceleration state
-    double *datacol = &data_accel[3*got_frames_depth];
-    freenect_raw_tilt_state *tiltstateptr = freenect_get_tilt_state(dev);
+    double *datacol = &data_accel[3*framesCapturedDepth];
+    freenect_raw_tilt_state *tiltstateptr = freenect_get_tilt_state(kinectDeviceCaller);
     freenect_get_mks_accel(tiltstateptr, datacol, datacol+1, datacol+2);
         
     //Get depth data
-    uint16_t* depth = static_cast<uint16_t*>(_depth);
+    uint16_t* depth = static_cast<uint16_t*>(depthBuf);
     size_t numElem = width*height;
     
     for(size_t ii = 0 ; ii < numElem ; ++ii) {
-        data_depth[numElem*got_frames_depth + ii] = depth[ii];
+        data_depth[numElem*framesCapturedDepth + ii] = depth[ii];
     }
         
-    ++got_frames_depth;
+    ++framesCapturedDepth;
 }
 
 //Returns how many frames have been captured
 int capturedFrames()
 {
-    return std::min(got_frames_rgb,got_frames_depth);
+    return std::min(framesCapturedRgb,framesCapturedDepth);
 }
 
 //Additional processing (update acceleration values)
@@ -153,9 +153,9 @@ void *process(void *data)
 {
     int currentFrame = 0;
     //While images need to be captured
-    while ((currentFrame = capturedFrames()) < max_frames_) {
+    while ((currentFrame = capturedFrames()) < framesToBeCaptured) {
         //Send blocking request to update tilt state
-        if(freenect_update_tilt_state(m_dev) != 0) {
+        if(freenect_update_tilt_state(kinectDevice) != 0) {
             //We might be trying to update too often
         }
     }
@@ -171,11 +171,11 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
                  const mxArray  *prhs[]) /*(PointerRightHandSide) Pointers to input data*/
 {
     //Initialize globals
-    m_ctx = NULL;
-    m_dev = NULL;
-    got_frames_rgb = 0;
-    got_frames_depth = 0;
-    max_frames_ = 0;
+    freenectContext = NULL;
+    kinectDevice = NULL;
+    framesCapturedRgb = 0;
+    framesCapturedDepth = 0;
+    framesToBeCaptured = 0;
     data_depth = NULL;
     data_rgb = NULL;
     data_accel = NULL;
@@ -200,7 +200,7 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     }
 
     //Get number of frames to be captured
-    max_frames_ = *((double*)mxGetData(prhs[0]));
+    framesToBeCaptured = *((double*)mxGetData(prhs[0]));
 
     if (nlhs != 3) {
         usage();
@@ -208,9 +208,9 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     }
 
     //Create output arrays
-    mwSize dims_out_depth[3] = {width,height,max_frames_};
-    mwSize dims_out_rgb[4] = {width,height,3,max_frames_};
-    mwSize dims_out_accel[2] = {3,max_frames_};
+    mwSize dims_out_depth[3] = {width,height,framesToBeCaptured};
+    mwSize dims_out_rgb[4] = {width,height,3,framesToBeCaptured};
+    mwSize dims_out_accel[2] = {3,framesToBeCaptured};
     mxArray *out_rgb = mxCreateNumericArray(4, dims_out_rgb, mxUINT8_CLASS, mxREAL);
     mxArray *out_depth = mxCreateNumericArray(3, dims_out_depth, mxDOUBLE_CLASS, mxREAL);
     mxArray *out_accel = mxCreateNumericArray(2, dims_out_accel, mxDOUBLE_CLASS, mxREAL);
@@ -223,17 +223,17 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     data_accel = (double*)mxGetData(out_accel);
     
     //Initialize freenect library
-    if (freenect_init(&m_ctx, NULL) < 0) {
+    if (freenect_init(&freenectContext, NULL) < 0) {
         mexErrMsgTxt("Cannot initialize freenect library");
     }
 
     //We claim both the motor and camera devices, since this class exposes both.
     //It does not support audio, so we do not claim it.
-    freenect_select_subdevices(m_ctx, static_cast<freenect_device_flags>(FREENECT_DEVICE_MOTOR | FREENECT_DEVICE_CAMERA));
+    freenect_select_subdevices(freenectContext, static_cast<freenect_device_flags>(FREENECT_DEVICE_MOTOR | FREENECT_DEVICE_CAMERA));
 
     //Try to open device
     //Open device 0
-    if(freenect_open_device(m_ctx, &m_dev, 0) < 0) { 
+    if(freenect_open_device(freenectContext, &kinectDevice, 0) < 0) { 
         mexErrMsgTxt("Cannot open Kinect");
     }
 
@@ -242,17 +242,17 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     freenect_depth_format requested_format_depth(FREENECT_DEPTH_11BIT);
 
     //Set video modes and callbacks
-    freenect_set_video_mode(m_dev, freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, requested_format_rgb));
-    freenect_set_depth_mode(m_dev, freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, requested_format_depth));
-    freenect_set_depth_callback(m_dev, DepthCallback);
-    freenect_set_video_callback(m_dev, VideoCallback);
+    freenect_set_video_mode(kinectDevice, freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, requested_format_rgb));
+    freenect_set_depth_mode(kinectDevice, freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, requested_format_depth));
+    freenect_set_depth_callback(kinectDevice, DepthCallback);
+    freenect_set_video_callback(kinectDevice, VideoCallback);
 
     //Open video and depth capturing
-    if(freenect_start_video(m_dev) < 0) {
+    if(freenect_start_video(kinectDevice) < 0) {
         mexErrMsgTxt("Cannot start RGB video");
     }
 
-    if(freenect_start_depth(m_dev) < 0) {
+    if(freenect_start_depth(kinectDevice) < 0) {
         mexErrMsgTxt("Cannot start depth");
     }
 
@@ -266,9 +266,9 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     
     int currentFrame = 0;
     //While still some images need to be captured
-    while ((currentFrame = capturedFrames()) < max_frames_) {
+    while ((currentFrame = capturedFrames()) < framesToBeCaptured) {
         //Process USB events and images
-        if(freenect_process_events(m_ctx) < 0) {
+        if(freenect_process_events(freenectContext) < 0) {
             mexPrintf("Cannot process freenect events\n");
         }
     }
@@ -278,16 +278,16 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     pthread_join(thread, &status);
 
     //Stop video and depth capturing
-    if(freenect_stop_video(m_dev) < 0) {
+    if(freenect_stop_video(kinectDevice) < 0) {
         mexErrMsgTxt("Cannot stop RGB callback");
     }
 
-    if(freenect_stop_depth(m_dev) < 0) {
+    if(freenect_stop_depth(kinectDevice) < 0) {
         mexErrMsgTxt("Cannot stop depth callback");
     }
 
     //Close USB device
-    if(freenect_close_device(m_dev) < 0) {
+    if(freenect_close_device(kinectDevice) < 0) {
         mexErrMsgTxt("Closing of the Kinect failed");
     }
 
