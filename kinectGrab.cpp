@@ -1,9 +1,9 @@
 #include "mex.h"
-#include "libfreenect.h"
-#include <libfreenect_sync.h>
+#include "libfreenect.h" 
 #include <vector>
-//#include <boost/thread/mutex.hpp>
 #include <cmath>
+#include <limits> //NaN
+#include <pthread.h>
 
 void usage()
 {
@@ -20,20 +20,74 @@ void usage()
     );
 }
 
+//Kinect device (physical device)
+freenect_device *m_dev = NULL;
+//Freenect library context
+freenect_context *m_ctx = NULL;
+//Number of rgb frames captured
 int got_frames_rgb = 0;
+//Number of depth frames captured
 int got_frames_depth = 0;
-int max_frames_ = 10;
+//Number of frames to be captured
+int max_frames_ = 0;
+//Pointers to MATLAB output data
 double *data_depth = NULL;
 uint8_t *data_rgb = NULL;
 double *data_accel = NULL;
 
+//Video constants
 const int width = 640;
 const int height = 480;
 const int channels = 3;
 
+//Have we received valid vide/depth?
+bool validDepthReceived = false;
+bool validRgbReceived = false;
+
+//Simple check to make sure that depth buffer contains actual data
+bool isValidDepthBuffer(void* _depth)
+{
+    uint16_t* depth = static_cast<uint16_t*>(_depth);
+    size_t numElem = width*height;
+    for(size_t ii = 0 ; ii < numElem ; ++ii) {
+        if (depth[ii] != 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+//Simple check to make sure that rgb buffer contains actual data
+bool isValidRgbBuffer(void* _rgb)
+{
+    uint8_t* rgb = static_cast<uint8_t*>(_rgb);
+    size_t layer = width*height;
+    size_t numElems = layer*3;
+    for(size_t ii = 0 ; ii < numElems ; ++ii) {
+        if (rgb[ii] != 0) {
+            return true;
+        }
+    }
+    return false;
+}
 
 // Do not call directly even in child
-void VideoCallback(freenect_device *m_dev, void* _rgb, uint32_t timestamp) {
+void VideoCallback(freenect_device *m_dev, void* _rgb, uint32_t timestamp)
+{
+    //Have we already received valid rgb data?
+    if (!validRgbReceived) {
+        validRgbReceived = isValidRgbBuffer(_rgb);
+        if (!validRgbReceived) {
+            return; //Rgb data not yet valid. Wait for next buffer
+        }
+    }
+
+    //We also must wait for valid depth
+    if (!validDepthReceived) {
+        return; //Wait till depth is ready
+    }
+
+    //Do not try to capture more frames than needed
     if (got_frames_rgb >= max_frames_) {
         return;
     }
@@ -51,23 +105,64 @@ void VideoCallback(freenect_device *m_dev, void* _rgb, uint32_t timestamp) {
 };
     
 // Do not call directly even in child
-void DepthCallback(freenect_device *dev, void* _depth, uint32_t timestamp) {
+void DepthCallback(freenect_device *dev, void* _depth, uint32_t timestamp)
+{
+    //Have we already received valid rgb data?
+    if (!validDepthReceived) {
+        validDepthReceived = isValidDepthBuffer(_depth);
+        return; //RGB must be captured first
+        //if (!validDepthReceived) {
+        //    return; //Rgb data not yet valid. Wait for next buffer
+        //}
+    }
+
+    //We also must wait for valid depth
+    if (!validRgbReceived) {
+        return; //Wait till depth is ready
+    }
+
+    //Do not try to capture more frames than needed
     if (got_frames_depth >= max_frames_) {
         return;
     }
-    
+
+    //Get the acceleration state
+    double *datacol = &data_accel[3*got_frames_depth];
+    freenect_raw_tilt_state *tiltstateptr = freenect_get_tilt_state(dev);
+    freenect_get_mks_accel(tiltstateptr, datacol, datacol+1, datacol+2);
+        
+    //Get depth data
     uint16_t* depth = static_cast<uint16_t*>(_depth);
     size_t numElem = width*height;
     
     for(size_t ii = 0 ; ii < numElem ; ++ii) {
         data_depth[numElem*got_frames_depth + ii] = depth[ii];
     }
-    
+        
     ++got_frames_depth;
 }
 
-int capturedFrames() {
+//Returns how many frames have been captured
+int capturedFrames()
+{
     return std::min(got_frames_rgb,got_frames_depth);
+}
+
+//Additional processing (update acceleration values)
+void *process(void *data)
+{
+    int currentFrame = 0;
+    //While images need to be captured
+    while ((currentFrame = capturedFrames()) < max_frames_) {
+        //Send blocking request to update tilt state
+        if(freenect_update_tilt_state(m_dev) != 0) {
+            //We might be trying to update too often
+        }
+    }
+
+    //Terminate thread
+    thread_exit:
+    pthread_exit(NULL);
 }
 
 void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments in left side of '=' (number of output arguments)*/
@@ -75,7 +170,19 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
                  int        nrhs,        /*(NumRightHandSide) Number of input arguments*/
                  const mxArray  *prhs[]) /*(PointerRightHandSide) Pointers to input data*/
 {
+    //Initialize globals
+    m_ctx = NULL;
+    m_dev = NULL;
+    got_frames_rgb = 0;
+    got_frames_depth = 0;
+    max_frames_ = 0;
+    data_depth = NULL;
+    data_rgb = NULL;
+    data_accel = NULL;
+    validDepthReceived = false;
+    validRgbReceived = false;
 
+    //Error checking for inputs and outputs
     if (nrhs < 1) {
         //Not enough inputs
         usage();
@@ -92,6 +199,7 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
         mexErrMsgTxt("Number of frames must be scalar\n");
     }
 
+    //Get number of frames to be captured
     max_frames_ = *((double*)mxGetData(prhs[0]));
 
     if (nlhs != 3) {
@@ -115,82 +223,61 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     data_accel = (double*)mxGetData(out_accel);
     
     //Initialize freenect library
-    //freenect_context *m_ctx;
-    //if (freenect_init(&m_ctx, NULL) < 0) {
-    //    mexErrMsgTxt("Cannot initialize freenect library");
-    //}
+    if (freenect_init(&m_ctx, NULL) < 0) {
+        mexErrMsgTxt("Cannot initialize freenect library");
+    }
 
-    freenect_video_format requested_format_rgb(FREENECT_VIDEO_RGB);
-    freenect_depth_format requested_format_depth(FREENECT_DEPTH_11BIT);
-
-
-    /*
-    // We claim both the motor and camera devices, since this class exposes both.
-    // It does not support audio, so we do not claim it.
+    //We claim both the motor and camera devices, since this class exposes both.
+    //It does not support audio, so we do not claim it.
     freenect_select_subdevices(m_ctx, static_cast<freenect_device_flags>(FREENECT_DEVICE_MOTOR | FREENECT_DEVICE_CAMERA));
 
     //Try to open device
-    freenect_device *m_dev;
-    
-    if(freenect_open_device(m_ctx, &m_dev, 0) < 0) { //Open device 0
+    //Open device 0
+    if(freenect_open_device(m_ctx, &m_dev, 0) < 0) { 
         mexErrMsgTxt("Cannot open Kinect");
     }
 
-    
-    
-    
+    //We would like to use these video output formats
+    freenect_video_format requested_format_rgb(FREENECT_VIDEO_RGB);
+    freenect_depth_format requested_format_depth(FREENECT_DEPTH_11BIT);
+
+    //Set video modes and callbacks
     freenect_set_video_mode(m_dev, freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, requested_format_rgb));
     freenect_set_depth_mode(m_dev, freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, requested_format_depth));
     freenect_set_depth_callback(m_dev, DepthCallback);
     freenect_set_video_callback(m_dev, VideoCallback);
 
-    
-    
+    //Open video and depth capturing
     if(freenect_start_video(m_dev) < 0) {
-        mexErrMsgTxt("Cannot start RGB callback");
+        mexErrMsgTxt("Cannot start RGB video");
     }
 
     if(freenect_start_depth(m_dev) < 0) {
-        mexErrMsgTxt("Cannot start depth callback");
+        mexErrMsgTxt("Cannot start depth");
     }
-    */
 
+    //Two processing threads, one at "process" updating acceleration
+    //and one here (main thread) processing events
+    pthread_t thread;
+    int rc = pthread_create(&thread, NULL, process, (void*)&thread);
+    if (rc) {
+        mexErrMsgTxt("problem with return code from pthread_create()");
+    }
+    
     int currentFrame = 0;
+    //While still some images need to be captured
     while ((currentFrame = capturedFrames()) < max_frames_) {
-        //mexPrintf("Waiting...\n");
-
-        void *videobuf = NULL;
-        void *depthbuf = NULL;
-        uint32_t timestamp;
-        if (freenect_sync_get_video(&videobuf, &timestamp, 0, requested_format_rgb)) {
-            mexPrintf("Synchronous RGB capture failed");
-        } else {
-            VideoCallback(NULL, videobuf, timestamp);
+        //Process USB events and images
+        if(freenect_process_events(m_ctx) < 0) {
+            mexPrintf("Cannot process freenect events\n");
         }
-
-        freenect_raw_tilt_state *tiltstateptr;
-        if (freenect_sync_get_tilt_state(&tiltstateptr, 0)) {
-            mexPrintf("Failed to get acceleration");
-        } else {
-            data_accel[3*currentFrame + 0] = ((double)tiltstateptr->accelerometer_x)/(double)FREENECT_COUNTS_PER_G;
-            data_accel[3*currentFrame + 1] = ((double)tiltstateptr->accelerometer_y)/(double)FREENECT_COUNTS_PER_G;
-            data_accel[3*currentFrame + 2] = ((double)tiltstateptr->accelerometer_z)/(double)FREENECT_COUNTS_PER_G;
-        }
-        
-
-        if (freenect_sync_get_depth(&depthbuf, &timestamp, 0, requested_format_depth)) {
-            mexPrintf("Synchronous depth capture failed");
-        } else {
-            DepthCallback(NULL, depthbuf, timestamp);
-        }
-        
-        //if(freenect_process_events(m_ctx) < 0) {
-        //    mexPrintf("Cannot process freenect events");
-        //}
     }
 
-    freenect_sync_stop();
-    /*
+    //Wait till acceleration updating thread stops
+    void *status;
+    pthread_join(thread, &status);
+
+    //Stop video and depth capturing
     if(freenect_stop_video(m_dev) < 0) {
         mexErrMsgTxt("Cannot stop RGB callback");
     }
@@ -199,11 +286,12 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
         mexErrMsgTxt("Cannot stop depth callback");
     }
 
+    //Close USB device
     if(freenect_close_device(m_dev) < 0) {
-        mexErrMsgTxt("Kinect closing failed");
+        mexErrMsgTxt("Closing of the Kinect failed");
     }
-    */
-    
+
+    //Uninit freenect
     if(freenect_shutdown < 0) {
         mexErrMsgTxt("Freenect shutdown failed");
     }
@@ -225,5 +313,8 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     data_permute2_vec[2] = 3;
     data_permute2_vec[3] = 4;
     mexCallMATLAB(1, &plhs[1], 2, permute2_in_params, "permute");
-    
+
+    //pthread_exit should never be called from main thread when using MATLAB
+    //as it causes MATLAB to exit ("crash")
+    //pthread_exit(NULL);
 }

@@ -10,8 +10,9 @@ R = reshape([9.9994855279432382e-01, -9.2814542247140770e-03, 4.0922331326492334
 T = [2.4158781090188233e-02, -2.5259041391054410e-03,2.5188423349242228e-03]';
 depth_base_and_offset = [7.84662664e-02, 1.07061072e+03];
 %% Get raw data
-numFrames = 10;
+numFrames = 100;
 [depth rgb accel] = kinectGrab(numFrames);
+accel
 %%
 accelVec = bsxfun(@rdivide,accel,sqrt(sum(accel.^2)));
 accelVec(2,:) = -accelVec(2,:);
@@ -120,10 +121,9 @@ for ii = 1:5:numFrames
     drawnow
 end
 %% Remove distortions
-ii = 1;
-jj = 1;
-img1 = rgb(:,:,:,jj);
-img2 = depth(:,:,jj);
+ii = 32;
+img1 = rgb(:,:,:,ii);
+img2 = depth(:,:,ii);
 
 invalidDepth = img2 == 2^11-1;
 
@@ -156,9 +156,9 @@ X(colorPosInvalid) = NaN;
 Y(colorPosInvalid) = NaN;
 Z(colorPosInvalid) = NaN;
 
-R = interp2(pixX,pixY, single(rgb_ud(:,:,1,ii)), colorPosX(:,:,ii), colorPosY(:,:,ii));
-G = interp2(pixX,pixY, single(rgb_ud(:,:,2,ii)), colorPosX(:,:,ii), colorPosY(:,:,ii));
-B = interp2(pixX,pixY, single(rgb_ud(:,:,3,ii)), colorPosX(:,:,ii), colorPosY(:,:,ii));
+R = interp2(pixX,pixY, single(rgb_ud(:,:,1)), colorPosX(:,:), colorPosY(:,:));
+G = interp2(pixX,pixY, single(rgb_ud(:,:,2)), colorPosX(:,:), colorPosY(:,:));
+B = interp2(pixX,pixY, single(rgb_ud(:,:,3)), colorPosX(:,:), colorPosY(:,:));
 
 R = uint8(R);
 G = uint8(G);
@@ -171,9 +171,9 @@ forward = forVec(:,ii);
 
 Rst = [forward up right   zeros(3,1);zeros(1,3) 1]';
 
-x = X(:,:,ii);
-y = Y(:,:,ii);
-z = Z(:,:,ii);
+x = X(:,:);
+y = Y(:,:);
+z = Z(:,:);
 
 dat = [x(:) y(:) z(:) ones(numel(x),1)]';
 dat = wnorm(inv(Rst)*dat);
