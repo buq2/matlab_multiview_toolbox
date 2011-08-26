@@ -1,4 +1,11 @@
 [depth rgb accel] = kinectGrab(1);
+%%
+for ii = 1:100
+    %imagesc(depth(:,:,ii));
+    imagesc(rgb(:,:,:,ii))
+    drawnow
+end
+%%
 R = kinectAccelerationsToRotations(accel);
 [X Y Z invalidDepth] = kinectDepthToXYZ(depth);
 [rgb invalidColor] = kinectRGBtransform(rgb,X,Y,Z);
