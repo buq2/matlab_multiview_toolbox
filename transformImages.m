@@ -76,7 +76,7 @@ if nargin < 4
         X_or_outsize = round([minmax_y(2)-minmax_y(1) minmax_x(2)-minmax_x(1)]);
     end
     
-    if nargin < 3 && (minmax_x(2)-minmax_x(1))*(minmax_y(2)-minmax_y(1)) > 16e6
+    if nargin < 3 && (minmax_x(2)-minmax_x(1))*(minmax_y(2)-minmax_y(1)) > 40e6%16e6
         error('Output image would be larger than 16MP, are you sure?')
     end
     

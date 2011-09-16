@@ -230,7 +230,7 @@ elseif method == 5
         t_vec = RT{ii}(:,4);
         params = [params; ang(:);t_vec(:)];
     end
-    params = lsqnonlin(@(p)P_Z_nonlin_fun(X,x,p),params(:),[],[],optimset('TolX',1e-10,'TolFun',1e-10,'Algorithm','levenberg-marquardt','Display','iter','MaxIter',10));
+    params = lsqnonlin(@(p)P_Z_nonlin_fun(X,x,p),params(:),[],[],optimset('TolX',1e-10,'TolFun',1e-10,'Algorithm','levenberg-marquardt','Display','iter','MaxIter',20));
     A(1,1) = params(1);
     A(2,2) = params(2);
     A(1,2) = params(3);
