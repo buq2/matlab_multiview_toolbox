@@ -20,7 +20,9 @@ if size(xy,1) == 4
     plot3(xy(1,:),xy(2,:),xy(3,:),markertype,'markersize',19,'linewidth',6)
     useHold();
     plot3(xy(1,1),xy(2,1),xy(3,1),'m*','markersize',19,'linewidth',6)
-    plot3(xy(1,1),xy(2,2),xy(3,2),'g*','markersize',3,'linewidth',3)
+    if size(xy,2) > 1
+        plot3(xy(1,2),xy(2,2),xy(3,2),'g*','markersize',3,'linewidth',3)
+    end
     useHold();
     xlabel('x-Axis')
     ylabel('y-Axis')
@@ -28,7 +30,9 @@ else
     plot(xy(1,:),xy(2,:),markertype,'markersize',19,'linewidth',6)
     useHold();
     plot(xy(1,1),xy(2,1),'m*','markersize',19,'linewidth',6)
-    plot(xy(1,2),xy(2,2),'g*','markersize',3,'linewidth',3)
+    if size(xy,2) > 1
+        plot(xy(1,2),xy(2,2),'g*','markersize',3,'linewidth',3)
+    end
     useHold();
 end
 
