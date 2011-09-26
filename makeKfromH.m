@@ -1,4 +1,4 @@
-function K = makeKfromH(H)
+function [K w] = makeKfromH(H)
 %Calcualtes internal camera parameters in matrix K from 
 %plane homographys H (at least three homographies are needed)
 %
@@ -14,4 +14,4 @@ function K = makeKfromH(H)
 w = makewfromH(H);
 
 %Calculate K from absolute conic
-K = makeKfromw(w);
+K = makeKfromw(w,1);

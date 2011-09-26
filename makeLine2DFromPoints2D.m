@@ -8,6 +8,15 @@ function l = makeLine2DFromPoints2D(x1,x2)
 %HZ2 p.28
 %
 %Matti Jukola 2010
+
+%xy pairs must be column vectors
+if numel(x1) == 2
+    x1 = x1(:);
+end
+if numel(x2) == 2
+    x2 = x2(:);
+end
+
 l = zeros(3,size(x1,2));
 if size(x1,1) == 3
     x1 = wnorm(x1);
