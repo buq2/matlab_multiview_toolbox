@@ -82,19 +82,22 @@ x = (P*X);
 plotp(wnorm(x(1:3,:)))
 
 %% Using vanishing points
-error('Might not work (2011.09.26)')
+%error('Might not work (2011.09.26)')
 
-img = imread('imgs_proprietary/test_image_cabin1.jpg');
+%img = imread('imgs_proprietary/test_image_cabin1.jpg');
+%img = imread('imgs_proprietary/test_image2.jpg');
+img = imread('imgs_proprietary/test_image3.jpg');
 imagesc(img)
 
-%vert1 = ginput(2);
-%vert2 = ginput(2);
-%horz1 = ginput(2);
-%hotz2 = ginput(2);
-%dept1 = ginput(2);
-%dept2 = ginput(2);
+vert1 = ginput(2);
+vert2 = ginput(2);
+horz1 = ginput(2);
+hotz2 = ginput(2);
+dept1 = ginput(2);
+dept2 = ginput(2);
 
-load imgs_proprietary/test_image_cabin1.jpg.mat
+%load imgs_proprietary/test_image_cabin1.jpg.mat
+%load imgs_proprietary/test_image2.jpg.mat
 
 hold on
 plot(vert1(:,1),vert1(:,2))
@@ -127,5 +130,5 @@ plotp(v3)
 hold off
 axis tight
 
-w = makewfromConstraints({[v1 v2],[v1 v3],[v2 v3]});
-
+w = makewfromConstraints({[v1 v2],[v1 v3],[v2 v3]},[],[],true);
+K = makeKfromw(w,1)

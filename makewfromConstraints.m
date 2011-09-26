@@ -25,9 +25,9 @@ if nargin < 5;square_pixels = false;end
 min_constraints = 5;
 num_constraints = numel(v1_v2)+numel(l_v)*2+numel(H_h1_h2)*2+max(zero_skew+square_pixels*2);
 
-if num_constraints < min_constraints
-   error('Too few constraints') 
-end
+%if num_constraints < min_constraints
+%   error('Too few constraints') 
+%end
 
 A = zeros(numel(v1_v2)+numel(l_v)*3+numel(H_h1_h2)*2,6);
 
