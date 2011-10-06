@@ -1,9 +1,12 @@
-function [H H_] = rectify(x1,x2,rigidPoint)
+function [H H_] = rectify(x1,x2,F,rigidPoint)
 %Rectifying transform for two image with point correspondance 'x1' and 'x2'
 %
 %Inputs:
 %      x1         - Points from first image
 %      x2         - Points from second image
+%      F          - Fundamental matrix between cameras P1 and P2.
+%                   If empty ([]) or not given, will be automatically
+%                   calculated from x1 and x2: F = makeF(x1,x2)
 %      rigidPoint - (optionel) 2D homogenous coordinate point for rigid point. Usually
 %                   should be chosen to be image center. If not given,
 %                   point [0 0 1] will be used.
@@ -13,7 +16,7 @@ function [H H_] = rectify(x1,x2,rigidPoint)
 %
 %Matti Jukola 2010, 2011.01.30
 
-if nargin < 3
+if nargin < 4
     rigidPoint = [0 0 1]';
 else
     rigidPoint = wnorm(rigidPoint);
@@ -32,7 +35,9 @@ if method == 1
          0 0  1];
     
     %Calculate fundamental matrix
-    F = makeF(x1,x2);
+    if nargin < 3 || isempty(F)
+        F = makeF(x1,x2);
+    end
     
     %Calculate epipole (left epipole e_)
     %e_ = wnorm(makeEpipoles(F')); %Transpose of F -> left epipole. F'*e_ = 0
