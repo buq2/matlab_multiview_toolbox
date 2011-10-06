@@ -97,6 +97,7 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     
     //See https://code.ros.org/trac/opencv/browser/trunk/opencv/samples/cpp/stereo_match.cpp
     //http://opencv.willowgarage.com/documentation/cpp/calib3d_camera_calibration_and_3d_reconstruction.html
+    //http://opencv.willowgarage.com/documentation/cpp/camera_calibration_and_3d_reconstruction.html#stereosgbm
         
     //Basic info about the imagess
     cv::Size img_size = img1.size();        
@@ -111,7 +112,7 @@ void mexFunction(int        nlhs,        /*(NumLeftHandSide) Number of arguments
     sgbm.P1 = 8*cn*sgbm.SADWindowSize*sgbm.SADWindowSize;
     sgbm.P2 = 32*cn*sgbm.SADWindowSize*sgbm.SADWindowSize;
     sgbm.minDisparity = -10;
-    sgbm.numberOfDisparities = ((img_size.width/8) + 15) & -16;
+    sgbm.numberOfDisparities = 400; //((img_size.width/8) + 15) & -16;
     sgbm.uniquenessRatio = 10;
     sgbm.speckleWindowSize = 100;
     sgbm.speckleRange = 32;
