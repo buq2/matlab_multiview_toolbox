@@ -108,16 +108,23 @@ elseif method == 3
     %HZ Algorithm 7.1 p. 181 (3D calibration)
     %"Gold Standard"
     
+    %First normalize points
+    [X_ tformU] = normalizePoints(X);
+    [x_ tformT] = normalizePoints(x);
+    
     %Linear solution susing DLT
-    A = makeA(X,x);
+    A = makeA(X_,x_,false);
     [U,S,V] = svd(A,false);
     P(:) = reshape(V(:,end),4,3)';
-    P = P./P(end);
     
     %Non-linear optimization
     params = P(:);
-    params = lsqnonlin(@(p)P_HZ_nonlin_fun(X,x,p),params(:));%,[],[],optimset('TolFun',1e-999,'TolX',1e-999,'MaxFunEvals',10000));
+    params = lsqnonlin(@(p)P_HZ_nonlin_fun(X_,x_,p),params(:));%,[],[],optimset('TolFun',1e-999,'TolX',1e-999,'MaxFunEvals',10000));
     P(:) = params(1:12);
+    
+    %Denormalize
+    P = inv(tformT)*P*tformU;
+    
     if nargout > 1
        [K R C] = decomposeP(P); 
     end
