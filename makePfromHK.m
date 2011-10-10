@@ -83,8 +83,11 @@ h2 = H(:,2);
 h3 = H(:,3);
 iK = inv(K);
 
-%Solve lambda
-lambda = 1/norm(iK*h2);
+%Solve lambda (rotation matrix is orthonormal, so norm of first two columns
+%should be 1)
+lambda1 = 1/norm(iK*h1);
+lambda2 = 1/norm(iK*h2);
+lambda = mean([lambda1 lambda2]);
 
 %And use it to get initial rotation matrix for this homography
 r1 = lambda*iK*h1;
