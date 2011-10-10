@@ -53,6 +53,9 @@ function [P optim] = makePfromHK(H,K,optim,x,X,optimparam)
 %
 %Zhang - Flexible Camera Calibration By Viewing a Plane From Unknown Orientations
 %
+%Also good reference is:
+%Liljequist -  Planes, Homographies and Augmented Reality
+%
 %Matti Jukola 2011.02.01
 
 if nargin < 3

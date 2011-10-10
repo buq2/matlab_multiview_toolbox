@@ -7,11 +7,11 @@ function H = makeH(x1,x2,method)
 %HZ Algorithm 4.2 p.109 (Normalized DLT for 2D homographies)
 %HZ Algorithm 7.1 p.181 uses this algorithm for 3D->2D (initial estimation
 %of P)
-
+%
 %If method = true, creates 3*n A matrix (default)
 %x1 = x
 %x2 = x'
-
+%
 %Matti Jukola (matti.jukola % iki.fi)
 %Version history:
 %  2010.06.xx - Initial version
