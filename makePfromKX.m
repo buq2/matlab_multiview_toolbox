@@ -26,9 +26,9 @@ if size(X,2) == 3
     X = wnorm(X);
     x = wnorm(x);
     
-    A_point = X(:,1);
-    B_point = X(:,2);
-    C_point = X(:,3);
+    A_point = X(1:3,1);
+    B_point = X(1:3,2);
+    C_point = X(1:3,3);
     a_point = x(:,1);
     b_point = x(:,2);
     c_point = x(:,3);
@@ -73,7 +73,7 @@ if size(X,2) == 3
     p_ = 2*(-x.*cosphi_bc);
     q_ = (x.^2*(1-K2)+2*x*K2*cosphi_ab-K2);
     
-    %Rest of the code might have some error regarding how final 'y' is 
+    %Rest of the code might have some error regarding how final 'y' is
     %constructed from 'y1', 'y2' and 'y3'. Also checking for imaginary parts
     %should be more strict.
     
@@ -107,29 +107,39 @@ if size(X,2) == 3
     %Now there might still be few values with imaginary parts
     trash = imag(y2).^2 > eps('single');
     y2(trash) = [];
-    trash = imag(y3).^2 > eps('single');
-    y3(trash) = [];
+    a3 = a2;
+    b3 = b2;
     a2(trash) = [];
     b2(trash) = [];
     
+    trash = imag(y3).^2 > eps('single');
+    y3(trash) = [];
+    a3(trash) = [];
+    b3(trash) = [];
+    
     %There also might be duplicates
     y2 = unique(real(y2));
+    if numel(y2) < numel(a2)
+        a2 = a2(1);
+        b2 = b2(1);
+    end
     y3 = unique(real(y3));
+    if numel(y3) < numel(a3)
+        a3 = a3(1);
+        b3 = b3(1);
+    end
     
     y = [y1;y2;y3];
-    a = [a1;a2];
-    b = [b1;b2];
+    a = [a1;a2;a3];
+    b = [b1;b2;b3];
     
     c = y.*a;
     
     finalcheck = y<0;
-    x(finalcheck) = [];
     a(finalcheck) = [];
     b(finalcheck) = [];
-    y(finalcheck) = [];
     c(finalcheck) = [];
     
-    x = real(x);
     a = real(a);
     b = real(b);
     c = real(c);
@@ -138,34 +148,53 @@ if size(X,2) == 3
     %Now we need to find L (or as in other place in this package C (camera
     %center))
     
-    %for ii = 1:numel(a)
-    
-    %Calculate angle LAB
-    %law of cosines
-    %c^2 = a^2 + b^2 -2*a*b*cos(phi)
-    %Now c = b, a=a and b=Rab
-    coslab = (b(ii)^2-a(ii)^2-Rab^2)/(-2*a(ii)*b(ii));
-    
-    %Vector projection: projected_point = (|a|cos(phi))*b where a is the
-    %point being projected and b is unit vector
-    %|a| = a, b = (B-A)/norm(B-A)
-    Qab = a(ii)*coslab*(B_point-A_point)/norm(B_point-A_point) + B_point;
-    
-    %Define plane P1 which has normal (B_point-A_point) and which goes trough
-    %Q
-    %http://en.wikipedia.org/wiki/Plane_(geometry)#Definition_with_a_point_and_a_normal_vector
-    n = B_point-A_point;
-    P1 = makePlaneFromnX([n;1],[Qab;1]);
-    
-    %Second plane P2
-    coslac = (c(ii)^2-a(ii)^2-Rac^2)/(-2*a(ii)*c(ii));
-    Qac = a(ii)*coslac*(C_point-A_point)/norm(C_point-A_point) + C_point;
-    n = C_point-A_point;
-    P2 = makePlaneFromnX([n;1],[Qac;1]);
-    
-    %Third plane P3
-    P3 = makePlaneFromX([A_point;1],[B_point;1], [C_point;1]);
-    
-    %Calculate intersection point all points
-    R = wnorm(makeXfromPlanes(P1,P2,P3));
+    for ii = 1:numel(a)
+        
+        %Calculate angle LAB
+        %law of cosines
+        %c^2 = a^2 + b^2 -2*a*b*cos(phi)
+        %Now c = b, a=a and b=Rab
+        coslab = (b(ii)^2-a(ii)^2-Rab^2)/(-2*a(ii)*Rab);
+        
+        %Vector projection: projected_point = (|a|cos(phi))*b where a is the
+        %point being projected and b is unit vector
+        %|a| = a, b = (B-A)/norm(B-A)
+        Qab = a(ii)*coslab*(B_point-A_point)/norm(B_point-A_point) + A_point;
+        
+        %Define plane P1 which has normal (B_point-A_point) and which goes trough
+        %Q
+        %http://en.wikipedia.org/wiki/Plane_(geometry)#Definition_with_a_point_and_a_normal_vector
+        n = B_point-A_point;
+        P1 = makePlaneFromnX([n;1],[Qab;1]);
+        
+        %Second plane P2
+        coslac = (c(ii)^2-a(ii)^2-Rac^2)/(-2*a(ii)*Rac);
+        Qac = a(ii)*coslac*(C_point-A_point)/norm(C_point-A_point) + A_point;
+        n = C_point-A_point;
+        P2 = makePlaneFromnX([n;1],[Qac;1]);
+        
+        %Third plane P3
+        P3 = makePlaneFromX([A_point;1],[B_point;1], [C_point;1]);
+        
+        %Calculate intersection point of all planes
+        R = wnorm(makeXfromPlanes(P1,P2,P3));
+        R = R(1:3);
+        
+        %Length RA
+        Rar = norm(R-A_point);
+        
+        %Compute lenght RL. Angle LRA is 90 degrees. Use Pythagoras
+        Rlr = sqrt(a(ii)^2 - Rar^2);
+        
+        %Compute vector perpendicular to P3
+        n = cross((B_point-A_point),(C_point-A_point));
+        %Scale
+        nscale = n/norm(n)*Rlr;
+        
+        L = R+nscale
+        if any(abs(imag(L))>0)
+            continue;
+        end
+        
+    end
 end
