@@ -72,4 +72,100 @@ if size(X,2) == 3
     m_ = 1;
     p_ = 2*(-x.*cosphi_bc);
     q_ = (x.^2*(1-K2)+2*x*K2*cosphi_ab-K2);
+    
+    %Rest of the code might have some error regarding how final 'y' is 
+    %constructed from 'y1', 'y2' and 'y3'. Also checking for imaginary parts
+    %should be more strict.
+    
+    %Quite big numerical errors, for this reason we are suing single eps
+    %instead of double eps.
+    mask = (m_.*q-m.*q_).^2 < eps('single');
+    
+    y1 = (p_.*q-p.*q_)./(m.*q_-m_.*q);
+    y1(mask) = [];
+    %a1 and b1 are related to y1
+    a1 = a(~mask);
+    b1 = b(~mask);
+    
+    %Take out imaginary parts
+    trash = imag(y1).^2 > eps('single');
+    y1(trash) = [];
+    a1(trash) = [];
+    b1(trash) = [];
+    y1 = real(y1);
+    
+    tmp = sqrt(cosphi_ac.^2+(Rac.^2-a.^2)./a.^2);
+    y2 = cosphi_ac-tmp;
+    y3 = cosphi_ac+tmp;
+    
+    %Remove those determined by mask
+    y2(~mask) = [];
+    y3(~mask) = [];
+    a2 = a(mask);
+    b2 = b(mask);
+    
+    %Now there might still be few values with imaginary parts
+    trash = imag(y2).^2 > eps('single');
+    y2(trash) = [];
+    trash = imag(y3).^2 > eps('single');
+    y3(trash) = [];
+    a2(trash) = [];
+    b2(trash) = [];
+    
+    %There also might be duplicates
+    y2 = unique(real(y2));
+    y3 = unique(real(y3));
+    
+    y = [y1;y2;y3];
+    a = [a1;a2];
+    b = [b1;b2];
+    
+    c = y.*a;
+    
+    finalcheck = y<0;
+    x(finalcheck) = [];
+    a(finalcheck) = [];
+    b(finalcheck) = [];
+    y(finalcheck) = [];
+    c(finalcheck) = [];
+    
+    x = real(x);
+    a = real(a);
+    b = real(b);
+    c = real(c);
+    
+    %a, b and c are lengths of the 'legs'
+    %Now we need to find L (or as in other place in this package C (camera
+    %center))
+    
+    %for ii = 1:numel(a)
+    
+    %Calculate angle LAB
+    %law of cosines
+    %c^2 = a^2 + b^2 -2*a*b*cos(phi)
+    %Now c = b, a=a and b=Rab
+    coslab = (b(ii)^2-a(ii)^2-Rab^2)/(-2*a(ii)*b(ii));
+    
+    %Vector projection: projected_point = (|a|cos(phi))*b where a is the
+    %point being projected and b is unit vector
+    %|a| = a, b = (B-A)/norm(B-A)
+    Qab = a(ii)*coslab*(B_point-A_point)/norm(B_point-A_point) + B_point;
+    
+    %Define plane P1 which has normal (B_point-A_point) and which goes trough
+    %Q
+    %http://en.wikipedia.org/wiki/Plane_(geometry)#Definition_with_a_point_and_a_normal_vector
+    n = B_point-A_point;
+    P1 = makePlaneFromnX([n;1],[Qab;1]);
+    
+    %Second plane P2
+    coslac = (c(ii)^2-a(ii)^2-Rac^2)/(-2*a(ii)*c(ii));
+    Qac = a(ii)*coslac*(C_point-A_point)/norm(C_point-A_point) + C_point;
+    n = C_point-A_point;
+    P2 = makePlaneFromnX([n;1],[Qac;1]);
+    
+    %Third plane P3
+    P3 = makePlaneFromX([A_point;1],[B_point;1], [C_point;1]);
+    
+    %Calculate intersection point all points
+    R = wnorm(makeXfromPlanes(P1,P2,P3));
 end
