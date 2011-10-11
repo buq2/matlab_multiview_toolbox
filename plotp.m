@@ -2,7 +2,9 @@ function plotp(xy,label,markertype)
 %Matti Jukola (matti.jukola % iki.fi)
 %Version history:
 %  2010.04.xx - Initial version
-
+if isempty(xy)
+    return
+end
 if nargin < 2 || isempty(label)
     label = false;
 end

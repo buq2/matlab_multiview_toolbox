@@ -21,5 +21,6 @@ for ii = 1:size(pi,2)
     mat = [X1(:,ii)';
            X2(:,ii)';
            X3(:,ii)'];
-    pi(:,ii) = null(mat);
+    pitmp = null(mat);
+    pi(:,ii) = pitmp(:,end);
 end

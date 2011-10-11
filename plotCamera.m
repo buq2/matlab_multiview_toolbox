@@ -1,45 +1,49 @@
-function h_out = plotCamera(P,siz,K)
-%Plots camera matrix P and calibration matrix K as a 3D camera
+function h_out = plotCamera(P,siz)
+%Plots camera matrix P=K*[R T] as a 3D camera
 %
 %Matti Jukola 2010
+%Updated 2011.10.11
 
 if nargin < 2 || isempty(siz)
-    siz = 0.2;
-end
-if nargin < 3
-    K = eye(3);
-    K(1,3) = 1;
-    K(2,3) = 1;
+    siz = 1;
 end
 
-[tmpK R C] = decomposeP(P);
+[K R C] = decomposeP(P);
+C = wnorm(C);
+
+%Assume that pricipal point is at the middle of the image plane
+sizeimg = [K(1,3) K(2,3)]'*2; %[x y]'
+sizeimg(sizeimg==0) = 1; %Force to have at least 1 pixel.
+
+
 %Point distance from origo (Z axis) = 1
-points = [1   1   1   1;... %Upper-right
-          1  -1   1   1;... %Lower-right
-         -1  -1   1   1;... %Lower-left
-         -1   1   1   1]';  %Upper-left
-     
-%Scale image planes x-axis to 1 length 1
-K = K./K(1,3)/2;
-points(1,:) = points(1,:)*K(1,3); %Scale image planes x-axis
-points(2,:) = points(2,:)*K(2,3); %y-axis
-points(3,:) = points(3,:)*mean([K(1,1) K(2,2)]); %Focal
+% points = [1   1   1   1;... %Upper-right
+%           1  -1   1   1;... %Lower-right
+%          -1  -1   1   1;... %Lower-left
+%          -1   1   1   1]';  %Upper-left
 
-%Scale camera
-points(1:3,:) = points(1:3,:).*siz;
+x = [0 0 1 1;
+     0 1 1 0;
+     1 1 1 1];
+x(1:2,:) = bsxfun(@times, x(1:2,:), sizeimg);
 
-%Rotate camera
-proj = [inv(R) zeros(3,1);0 0 0 1];
-p = wnorm(proj*points);
-p = bsxfun(@plus,p(1:3,:),C(1:3));
+n = wnorm(pinv(P)*x); %Vectors pointing away from camera
+n(1:3,:) = bsxfun(@minus,n(1:3,:),C(1:3,:));
+%Normalize to unit lenght
+nnorm = n;
+nnorm(1:3,:) = bsxfun(@rdivide, n(1:3,:), sqrt(sum(n.^2)));
+nnorm(1:3,:) = nnorm(1:3,:)*siz;
+
+X = nnorm;
+X(1:3,:) = bsxfun(@plus,X(1:3,:),C(1:3));
 
 hold on
 %Plot frame
-h = plot3([p(1,:) p(1,1)],[p(2,:) p(2,1)], [p(3,:) p(3,1)],'k');
+h = plot3([X(1,:) X(1,1)],[X(2,:) X(2,1)], [X(3,:) X(3,1)],'k');
 
 %Plot frame corners -> camera center
-for ii = 1:size(p,2)
-    h = [h plot3([C(1) p(1,ii)],[C(2) p(2,ii)],[C(3) p(3,ii)],'k')];
+for ii = 1:size(X,2)
+    h = [h plot3([C(1) X(1,ii)],[C(2) X(2,ii)],[C(3) X(3,ii)],'k')];
 end
 
 hold off
