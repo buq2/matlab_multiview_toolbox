@@ -24,4 +24,4 @@ if normalization
    P = inv(TT)*P*TU; 
 end
 
-P = P./P(end);
+%P = P./P(end);

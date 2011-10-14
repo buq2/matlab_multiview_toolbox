@@ -7,6 +7,11 @@ function [P optim] = makePfromHK(H,K,optim,x,X,optimparam)
 %This function is quite close to actual camera calibration. Main difference
 %is that we assume that K is already known quite well.
 %
+%We assume that the plane (which has points X, for which x = H*X) has normal 
+%vector [0 0 1 1]' (as Z is usually 0) and that camera center should be at
+%positive Z. This makes the algorithm more stable, as camera can not
+%easily flip to the other side of the plane.
+%
 %Inputs:
 %      H     - Homography matrix (3x3), can be cell, in which case
 %                camera matrix will be computed dor each H independently
@@ -57,6 +62,12 @@ function [P optim] = makePfromHK(H,K,optim,x,X,optimparam)
 %Liljequist -  Planes, Homographies and Augmented Reality
 %
 %Matti Jukola 2011.02.01
+
+%By making sure that the last value of H has always the same sign,
+%we ensure that camera is always at the same side of the normal vector of
+%the plane. (This is because last column of H is related to camera
+%location. We assume that calibration matrixs' last element is also 1.)
+H = H./H(end);
 
 if nargin < 3
     optim = false;
@@ -110,6 +121,11 @@ R = U*V'; %Assume S = eye(3)
 t = lambda*iK*h3; %TODO: is this lambda the "new" one or the "old" one?
 
 if optim
+    %if t(3) < 0 %If camera at negative Z
+    %    %Flip camera to the positive side
+    %    t(3) = -t(3);
+    %end
+        
     if size(X,1) == 3
         X = wnorm(X);
         X = convertToHom([X(1:2,:); zeros(1,size(X,2))]);
