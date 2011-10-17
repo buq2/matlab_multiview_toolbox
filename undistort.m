@@ -53,7 +53,8 @@ else
     d2 = sqrt(sum(tmp.^2,1));
 end
     
-if ~fastflag
+%For small number of x1, use more accurate, non-interpolate, version
+if ~fastflag || size(x,2) < 200 
     d2 = solved2(d2,r);
 else
     min_max = [min(d2) max(d2)];
