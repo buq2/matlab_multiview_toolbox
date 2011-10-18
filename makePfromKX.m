@@ -197,4 +197,8 @@ if size(X,2) == 3
         end
         
     end
+elseif size(X,2) > 3
+    
+else
+    error('Too few 3D points')
 end

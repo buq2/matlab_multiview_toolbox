@@ -211,6 +211,9 @@ function OK = signs_OK(F,x1,x2)
 %
 %Function mostly by HZ as I (Matti Jukola) can not quite grasp its purpose
 %or what it does.
+%
+%Probably checks that all points, x1 and x2 are either in front of the
+%cameras, or behind it.
 [U S V] = svd(F);
 e = U(:,end);
 l1 = makeSkew(e)*x1;
