@@ -54,13 +54,12 @@ else
 end
     
 %For small number of x1, use more accurate, non-interpolate, version
-if ~fastflag || size(x,2) < 200 
+if ~fastflag %|| size(x,2) < 200 
     d2 = solved2(d2,r);
 else
     min_max = [min(d2) max(d2)];
     if min_max(2)-min_max(1) < 100
-        %At least 100 points
-        d2_ = linspace(min_max(1),min_max(2),100);
+        d2_ = linspace(min_max(1),min_max(2),128);
     else
         %Point for each "pixel"
         d2_ = min_max(1):min_max(2);
