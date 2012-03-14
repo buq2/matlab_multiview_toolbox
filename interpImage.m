@@ -10,7 +10,7 @@ function outimg = interpImage(imgx,imgy,img,interpx,interpy,outsize)
 %      outsize    - (optional) In case if interpx is vector this input can
 %                    be used to set size of output
 %Outputs:
-%      outmg      - Interpolated image, numeric class same as inputs
+%      outimg      - Interpolated image, numeric class same as inputs
 %
 %Matti Jukola 2011.02.19
 
@@ -28,6 +28,12 @@ if ~isfloat(img)
     img = single(img);
 end
 
-for ii = 1:size(img,3)
-    outimg(:,:,ii) = reshape(interp2(imgx,imgy,img(:,:,ii),interpx,interpy),size(outimg(:,:,ii)));
+if ~exist('interp2img.m','file')
+    for ii = 1:size(img,3)
+        outimg(:,:,ii) = reshape(interp2(imgx,imgy,img(:,:,ii),interpx,interpy),size(outimg(:,:,ii)));
+    end
+else
+    %Use faster version of linear interpolation
+    outimg(:) = interp2img(img,interpx,interpy);
 end
+

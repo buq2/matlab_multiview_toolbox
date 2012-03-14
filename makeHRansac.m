@@ -38,6 +38,11 @@ sample_count = 0;
 x1 = wnorm(x1);
 x2 = wnorm(x2);
 
+%Workaround for missing randi (at least in r2007b with only few toolboxes)
+if ~exist('randi','builtin')
+    randi = @(maxval,size1,size2)round(rand(size1,size2)*(maxval-1))+1;
+end
+
 ii = 1; %Number of iterations
 while ii <= maxiter && N > sample_count %Algo 4.5
    idxs = randi(nump,pointsel,1);
