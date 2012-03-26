@@ -1,4 +1,4 @@
-function x = wnorm(x) %#eml
+function x = wnorm(x)
 %Matti Jukola (matti.jukola % iki.fi)
 %Version history:
 %  2010.04.xx - Initial version
