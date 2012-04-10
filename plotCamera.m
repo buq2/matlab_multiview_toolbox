@@ -33,7 +33,7 @@ sizeimg(sizeimg==0) = 1; %Force to have at least 1 pixel.
 %          -1  -1   1   1;... %Lower-left
 %          -1   1   1   1]';  %Upper-left
 
-x = [0 0 1 1;
+x = [0 0 1 1; %Four corners of image plane
      0 1 1 0;
      1 1 1 1];
 x(1:2,:) = bsxfun(@times, x(1:2,:), sizeimg);
@@ -46,7 +46,7 @@ nnorm(1:3,:) = bsxfun(@rdivide, n(1:3,:), sqrt(sum(n.^2)));
 nnorm(1:3,:) = nnorm(1:3,:)*siz;
 
 X = nnorm;
-X(1:3,:) = bsxfun(@plus,X(1:3,:),C(1:3));
+X(1:3,:) = bsxfun(@plus,X(1:3,:),C(1:3)); %Add camera location to corner points
 
 hold on
 %Plot frame
