@@ -1,6 +1,6 @@
 function ang = calculateAngleBetweenLines(l1,l2)
 %Calculates angle between two implicit lines l_1 and l_2, l_i = a*x+b*y+c = 0
-%such that the angle is always between 0 and pi/2
+%such that the angle is always between -pi/2 and pi/2
 %
 %Input:
 %     l1 - Implicit lines 3xn array
