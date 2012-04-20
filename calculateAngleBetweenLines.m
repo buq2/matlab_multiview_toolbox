@@ -34,7 +34,7 @@ vertidx2(paralines) = false;
 ang(paralines) = 0;
 %If one of the lines is vertical, angle is directly the slope factor of the
 %other line
-ang(vertidx1) = atan(k2);
-ang(vertidx2) = atan(k1);
+ang(vertidx1) = atan(k2)-pi/2;
+ang(vertidx2) = atan(k1)-pi/2;
 
 
