@@ -6,7 +6,7 @@ function [H best] = makeHRansac(x1,x2,maxdist)
 %
 %HZ Algorithm 4.4 p.118
 
-maxiter = 1000;
+maxiter = 10000;
 pointsel = 4;
 nump = size(x1,2);
 if nargin < 3
@@ -41,6 +41,10 @@ x2 = wnorm(x2);
 %Workaround for missing randi (at least in r2007b with only few toolboxes)
 if ~exist('randi','builtin')
     randi = @(maxval,size1,size2)round(rand(size1,size2)*(maxval-1))+1;
+else
+    %Seems like we have to redefine the randi, MATLAB might be confused
+    %about the r2007b fix.
+    randi = @(varargin)builtin('randi',varargin{:});
 end
 
 ii = 1; %Number of iterations
