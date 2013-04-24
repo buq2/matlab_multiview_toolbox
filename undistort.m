@@ -36,8 +36,17 @@ if ~isempty(t) && numel(t) ~= 2
     error('Basic undistortion function supports two (2) tangential distortion coefficients')
 end
 
+%Add tangential distortion
 if ~isempty(t)
-   org_x = x(1:2,:); 
+    if exist('lsqnonlin','builtin')
+        [x]  = lsqnonlin(@(param)tangential_optim(x, t, t_center, param),...
+            x,...
+            [],[],...
+            optimset('Algorithm','levenberg-marquardt','Display','iter','maxiter',20));
+    else
+        x_new = LMFsolve(@(param)tangential_optim(x, t, t_center, param),x);
+        x = reshape(x_new,size(x));
+    end
 end
 
 r_center = r_center(:);
@@ -85,16 +94,6 @@ end
 %Remove radial distortion
 without_r_center(1:2,:) = bsxfun(@rdivide,without_r_center(1:2,:),l);
 x(1:2,:) = bsxfun(@plus,without_r_center(1:2,:),r_center);
-
-%Add tangential distortion
-if ~isempty(t)
-    error('Solution for tangential distortion not implemented')
-    %t_center = t_center(:);
-    %without_t_center = bsxfun(@minus,org_x,t_center);
-    %d2 = sum(without_t_center.^2,1);
-    %x(1,:) = x(1,:) + 2*t(1)*org_x(1,:).*org_x(2,:)+t(2).*(d2+2.*org_x(1,:).^2);
-    %x(2,:) = x(2,:) + 2*t(2)*org_x(2,:).*org_x(2,:)+t(1).*(d2+2.*org_x(2,:).^2);
-end
 return
 
 function d2 = solved2(d2,r)
@@ -132,3 +131,11 @@ switch numel(r)
         end
 end
 return
+
+%Slow but sure way to remove tangential distortion by optimizing
+function err = tangential_optim(x_distorted, t, t_center, x_undistorted)
+x_undistorted = reshape(x_undistorted,size(x_distorted)); %Needed as optimization funciton can reshape the input
+x_distorted_optim = distort(x_undistorted, [], [], 1, t, t_center);
+err = wnorm(x_distorted) - wnorm(x_distorted_optim);
+err = err(1:2,:); %Last row always 0 due to homogenous coordinates (1-1)
+err = err(:);

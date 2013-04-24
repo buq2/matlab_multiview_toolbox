@@ -181,10 +181,14 @@ if optim
     %    param(:),...
     %    [],[],...
     %    optimset('TolX',1e-10,'TolFun',1e-10,'Algorithm','levenberg-marquardt','Display','iter','maxiter',20));
-    [param,resnorm,residual,exitflag,output,lambda,jacobian]  = lsqnonlin(@(p)nonlinfun(optimparam,x,X,K,p),...
-        param(:),...
-        [],[],...
-        optimset('TolX',1e-15,'TolFun',1e-10,'Algorithm','levenberg-marquardt','Display','iter','maxiter',20));
+    if exist('lsqnonlin','builtin')
+        [param,resnorm,residual,exitflag,output,lambda,jacobian]  = lsqnonlin(@(p)nonlinfun(optimparam,x,X,K,p),...
+            param(:),...
+            [],[],...
+            optimset('TolX',1e-15,'TolFun',1e-10,'Algorithm','levenberg-marquardt','Display','iter','maxiter',20));
+    else
+        param = LMFsolve(@(p)nonlinfun(optimparam,x,X,K,p), param(:));
+    end
     
     %Get rotation matrix
     R = rodrigues(param(1:3));
@@ -276,6 +280,7 @@ if distortion
 end
 
 er = x(1:2,:)-x_(1:2,:);
+er = er(:); %Required for LMFsolve
 return
 
 
