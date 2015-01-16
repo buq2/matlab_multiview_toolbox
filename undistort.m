@@ -38,6 +38,7 @@ end
 
 %Add tangential distortion
 if ~isempty(t)
+    %error('Solution for tangential distortion not implemented')
     if exist('lsqnonlin','builtin')
         [x]  = lsqnonlin(@(param)tangential_optim(x, t, t_center, param),...
             x,...
@@ -63,7 +64,7 @@ else
 end
     
 %For small number of x1, use more accurate, non-interpolate, version
-if ~fastflag %|| size(x,2) < 200 
+if ~fastflag || size(x,2) < 3
     d2 = solved2(d2,r);
 else
     min_max = [min(d2) max(d2)];
@@ -134,8 +135,8 @@ return
 
 %Slow but sure way to remove tangential distortion by optimizing
 function err = tangential_optim(x_distorted, t, t_center, x_undistorted)
-x_undistorted = reshape(x_undistorted,size(x_distorted)); %Needed as optimization funciton can reshape the input
 x_distorted_optim = distort(x_undistorted, [], [], 1, t, t_center);
-err = wnorm(x_distorted) - wnorm(x_distorted_optim);
+err = wnorm(x_distorted) - wnorm(reshape(x_distorted_optim, size(x_distorted)));
 err = err(1:2,:); %Last row always 0 due to homogenous coordinates (1-1)
 err = err(:);
+return
