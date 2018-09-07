@@ -187,7 +187,8 @@ if optim
             [],[],...
             optimset('TolX',1e-15,'TolFun',1e-10,'Algorithm','levenberg-marquardt','Display','iter','maxiter',20));
     else
-        param = LMFsolve(@(p)nonlinfun(optimparam,x,X,K,p), param(:));
+        %param = LMFsolve(@(p)nonlinfun(optimparam,x,X,K,p), param(:));
+        param = LMFnlsq2(@(p)nonlinfun(optimparam,x,X,K,p), param(:),'XTol',1e-16,'Basdx',25e-6,'MaxIter',1000,'FunTol',1e-14);
     end
     
     %Get rotation matrix
